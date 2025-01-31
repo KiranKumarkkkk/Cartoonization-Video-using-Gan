@@ -47,3 +47,7 @@ python train.py --dataset dataset/ --epochs 100
 
 📩 Contribution
 Contributions are welcome! Feel free to submit issues or pull requests.
+
+
+
+To get the output Run the Server.py
