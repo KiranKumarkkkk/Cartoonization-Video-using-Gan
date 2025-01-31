@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animation - Nirmal</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Animation Generator</h1>
+        <form id="uploadForm" class="row g-3 shadow p-4 rounded bg-light" action="/process" method="POST" enctype="multipart/form-data">
+            <div class="col-md-12">
+                <label for="file" class="form-label">Upload an Image or Video</label>
+                <input type="file" class="form-control" name="file" accept="image/*,video/*" required>
+            </div>
+            <div class="col-md-6">
+                <label for="frame_rate" class="form-label">Frame Rate (FPS)</label>
+                <input type="number" class="form-control" name="frame_rate" value="30" min="1">
+            </div>
+            <div class="col-md-6">
+                <label for="batch_size" class="form-label">Batch Size</label>
+                <input type="number" class="form-control" name="batch_size" value="1" min="1">
+            </div>
+            <div class="col-md-12">
+                <label for="model_checkpoint" class="form-label">Model Checkpoint</label>
+                <input type="text" class="form-control" name="model_checkpoint" value="./checkpoints/trained_netG.pth" disabled>
+            </div>
+            <div class="col-md-6">
+                <label for="output_quality" class="form-label">Output Quality (1-100)</label>
+                <input type="number" class="form-control" name="output_quality" value="90" min="1" max="100">
+            </div>
+            <div class="col-md-6">
+                <label for="device" class="form-label">Device</label>
+                <select class="form-select" name="device">
+                    <option value="cuda">CUDA</option>
+                    <option value="cpu">CPU</option>
+                </select>
+            </div>
+            <div class="col-md-12">
+                <label for="transformations" class="form-label">Image Transformations</label>
+                <select class="form-select" name="transformations">
+                    <option value="no_augment">No Augmentation</option>
+                    <option value="basic">Basic Transformations</option>
+                    <option value="advanced">Advanced Transformations</option>
+                </select>
+            </div>
+            <div class="col-md-12 text-center">
+                <button type="submit" id="submitButton" class="btn btn-primary w-100">
+                    <span id="submitText">Process File</span>
+                    <span id="loadingSpinner" class="spinner-border spinner-border-sm ms-2" style="display: none;" role="status" aria-hidden="true"></span>
+                </button>
+            </div>
+        </form>
+
+        <h2 class="text-center mt-5">Processed Output</h2>
+        <div id="outputContainer" class="mt-4" style="display:none;">
+            <div id="imageContainer" style="display:none;" class="text-center">
+                <img id="processedImage" src="" alt="Processed Image" class="img-fluid mb-3">
+                <a id="downloadImageLink" href="" download class="btn btn-success">Download Image</a>
+            </div>
+            <div id="videoContainer" style="display:none;" class="text-center">
+                <video id="processedVideo" controls class="w-100 mb-3"></video>
+                <a id="downloadVideoLink" href="" download class="btn btn-success">Download Video</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const uploadForm = document.getElementById("uploadForm");
+        const submitButton = document.getElementById("submitButton");
+        const submitText = document.getElementById("submitText");
+        const loadingSpinner = document.getElementById("loadingSpinner");
+
+        uploadForm.onsubmit = function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            // Show loading spinner and disable submit button
+            submitText.textContent = "Processing...";
+            loadingSpinner.style.display = "inline-block";
+            submitButton.disabled = true;
+
+            // Reset output containers
+            document.getElementById("outputContainer").style.display = "none";
+            document.getElementById("imageContainer").style.display = "none";
+            document.getElementById("videoContainer").style.display = "none";
+
+            const formData = new FormData(uploadForm);
+            fetch("/process", {
+                method: "POST",
+                body: formData,
+                headers: {
+                    "Accept": "application/json" // Expect JSON response
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    alert("Error processing the file.");
+                    return;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    alert("Error: " + data.error);
+                    return;
+                }
+
+                const { file_url, file_type } = data;
+                const baseURL = window.location.origin; // Base URL of the Flask app
+                const fullFileURL = baseURL + file_url; // Complete file URL
+
+                if (file_type.startsWith("image")) {
+                    document.getElementById("imageContainer").style.display = "block";
+                    document.getElementById("processedImage").src = fullFileURL;
+                    document.getElementById("downloadImageLink").href = fullFileURL;
+                } else if (file_type.startsWith("video")) {
+                    document.getElementById("videoContainer").style.display = "block";
+                    document.getElementById("processedVideo").src = fullFileURL;
+                    document.getElementById("downloadVideoLink").href = fullFileURL;
+                }
+
+                // Display the output container
+                document.getElementById("outputContainer").style.display = "block";
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("There was an error processing the file.");
+            })
+            .finally(() => {
+                // Reset button state
+                submitText.textContent = "Process File";
+                loadingSpinner.style.display = "none";
+                submitButton.disabled = false;
+            });
+        };
+    </script>
+</body>
+</html>
